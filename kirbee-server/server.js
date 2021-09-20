@@ -1,5 +1,7 @@
 let connectCounter = 0;
 let tooSoon = true;
+let tooLate = false;
+let readyCounter = 0;
 
 const io = require('socket.io')(3006, {
   cors: {
@@ -33,25 +35,34 @@ io.on('connection', function(socket) {
     socket.emit('pong');
   });
 
-  socket.on('play', () => {
-    tooSoon = true;
-    const min = 3;
-    const max = 10;
-    const rand = Math.floor(Math.random() * (max - min + 1) + min); //Generate Random number between 5 - 10
-    console.log('Wait for ' + rand + ' seconds');
-    setTimeout(myFunction, rand * 1000);
-    tooSoon = false;
-    io.sockets.emit('!');
+  socket.on('playerReady', () => {
+    readyCounter++;
+    console.log('readyCounter', readyCounter);
+    if(readyCounter === 2) {
+      io.sockets.emit('play');
+      readyCounter = 0;
+      tooSoon = true;
+      tooLate = false;
+      const min = 3;
+      const max = 10;
+      const rand = Math.floor(Math.random() * (max - min + 1) + min); //Generate Random number between 3 - 10
+      console.log('Wait for ' + rand + ' seconds');
+      setTimeout(function() {tooSoon = false; io.sockets.emit('!');}, rand * 1000);
+    }
   })
 
   socket.on('slash', () => {
+    console.log('slash');
+    if(!tooLate || readyCounter === 2) {
       if(tooSoon) {
         socket.emit('ToSoonLose');
         socket.broadcast.emit('ToSoonWin');
       } else {
+        tooLate = true;
         socket.emit('Win')
         socket.broadcast.emit('Lose');
       }
+    }
   })
 
 });
